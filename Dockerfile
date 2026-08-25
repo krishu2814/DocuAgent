@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    python -c "from fastembed import TextEmbedding; list(TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2').embed(['warmup']))"
 
 COPY . .
 

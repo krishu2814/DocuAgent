@@ -24,6 +24,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Database initialized with pgvector extension.")
     except Exception as exc:
         logger.warning(f"Database auto-initialization skipped or deferred: {exc}")
+
+    # Pre-warm embedding model in memory for instant document uploads
+    try:
+        from app.services.embedding import get_embedding_model
+        get_embedding_model()
+        logger.info("Embedding model pre-warmed and ready.")
+    except Exception as exc:
+        logger.warning(f"Embedding warmup deferred: {exc}")
+
     yield
 
 
