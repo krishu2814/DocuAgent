@@ -11,16 +11,16 @@ class Settings(BaseSettings):
 
     # App
     PROJECT_NAME: str = "DocuAgent"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "production"
     FRONTEND_URL: str = ""
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/docuagent"
 
-    # LLM (Groq - fast, universal free tier model)
+    # LLM (Groq - fast, universal active model)
     LLM_PROVIDER: str = "groq"
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_MODEL: str = "groq/compound-mini"
 
     # Embeddings (Hugging Face / FastEmbed)
     EMBEDDING_PROVIDER: str = "huggingface"
