@@ -56,7 +56,7 @@ flowchart TD
 ```text
 DocuAgent/
 ├── app/
-│   ├── main.py              # FastAPI app, lifespan, CORS & router mounting
+│   ├── main.py              # FastAPI app, lifespan, CORS & static frontend mounting
 │   ├── config.py            # Pydantic Settings for environment variables
 │   ├── database.py          # SQLAlchemy async engine, sessionmaker & Base
 │   │
@@ -79,6 +79,11 @@ DocuAgent/
 │       ├── state.py         # AgentState TypedDict
 │       ├── nodes.py         # 5 LangGraph node implementations
 │       └── graph.py         # StateGraph assembly & execution
+│
+├── frontend/                # Lightweight Modern UI (HTML5, Vanilla CSS, JS)
+│   ├── index.html           # Semantic Single-Page Dashboard
+│   ├── styles.css           # Soft Light Theme Design System
+│   └── app.js               # Reactive Chat & Document Management
 │
 ├── tests/                   # Pytest test suite (20 unit & API tests)
 ├── uploads/                 # Uploaded document storage
@@ -254,6 +259,3 @@ tests/test_rag.py::test_chat_empty_question_returns_400 PASSED           [100%]
    - The LLM does not invent citation metadata. Every chunk stored in pgvector retains its original document filename and page number from `pypdf`. The citations section is constructed directly by the backend from the chunks actually retrieved.
 
 ---
-
-## 8. License
-MIT License. Free to use and extend for personal and portfolio projects.

@@ -13,6 +13,8 @@ async def test_health_check(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_not_found_endpoint(client: AsyncClient) -> None:
-    response = await client.get("/nonexistent-route")
-    assert response.status_code == 404
+async def test_frontend_home_page(client: AsyncClient) -> None:
+    response = await client.get("/")
+    assert response.status_code == 200
+    assert "DocuAgent" in response.text
+    assert "Knowledge Base" in response.text

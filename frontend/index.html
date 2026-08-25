@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuAgent — Agentic RAG Document Assistant</title>
+    <meta name="description" content="A lightweight, production-grade Agentic RAG document assistant with LangGraph, pgvector, and multi-turn memory.">
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <path d="M16 13H8"></path>
+                        <path d="M16 17H8"></path>
+                        <path d="M10 9H8"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="brand-title">DocuAgent</h1>
+                    <p class="brand-subtitle">Agentic RAG Assistant</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="status-indicator" id="system-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connected</span>
+                </div>
+                <button id="new-chat-btn" class="btn btn-secondary btn-sm" title="Start a fresh conversation">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Chat
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <main class="main-layout">
+        <!-- Sidebar: Documents Panel -->
+        <aside class="sidebar-panel">
+            <div class="panel-header">
+                <div class="panel-title-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <h2>Knowledge Base</h2>
+                </div>
+                <span class="badge" id="doc-count-badge">0 Docs</span>
+            </div>
+
+            <!-- Upload Area -->
+            <div class="upload-box" id="drop-zone">
+                <input type="file" id="file-input" accept=".pdf,.txt,.md,.markdown" class="file-input-hidden">
+                <div class="upload-icon-circle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </div>
+                <p class="upload-title">Drop your file here, or <span class="upload-highlight">browse</span></p>
+                <p class="upload-formats">PDF, Markdown, TXT</p>
+            </div>
+
+            <!-- Upload Loading / Error Toast inside panel -->
+            <div id="upload-status" class="upload-status hidden"></div>
+
+            <!-- Document List -->
+            <div class="documents-list-section">
+                <h3 class="section-label">Uploaded Documents</h3>
+                <div id="documents-container" class="documents-container">
+                    <div class="empty-state">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <p>No documents uploaded yet</p>
+                        <span>Upload a PDF, TXT or MD to begin querying</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Chat & Agent Visualizer Panel -->
+        <section class="chat-panel">
+            <!-- Messages Stream Area -->
+            <div class="chat-messages" id="chat-messages">
+                <!-- Welcome Hero Message -->
+                <div class="welcome-card" id="welcome-card">
+                    <div class="welcome-icon">✨</div>
+                    <h3>Welcome to DocuAgent</h3>
+                    <p>Upload your documents on the left panel, and ask questions. DocuAgent analyzes question complexity, retrieves relevant chunks from pgvector, and generates answers with page-level citations.</p>
+                    
+                    <div class="quick-prompts">
+                        <p class="quick-prompts-label">Try asking:</p>
+                        <div class="prompts-grid">
+                            <button class="prompt-chip" data-prompt="What are the key topics covered in the uploaded documents?">
+                                📑 What are the key topics covered?
+                            </button>
+                            <button class="prompt-chip" data-prompt="Compare the main concepts and their tradeoffs.">
+                                ⚖️ Compare main concepts & tradeoffs
+                            </button>
+                            <button class="prompt-chip" data-prompt="Summarize the core takeaways in bullet points.">
+                                📝 Summarize the core takeaways
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input Bar -->
+            <div class="chat-input-container">
+                <form id="chat-form" class="chat-form">
+                    <textarea 
+                        id="user-input" 
+                        rows="1" 
+                        placeholder="Ask a question about your documents..." 
+                        aria-label="Your Question"
+                        required
+                    ></textarea>
+                    <button type="submit" id="send-btn" class="send-btn" title="Send message">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </form>
+                <div class="input-hints">
+                    <span>Press <strong>Enter</strong> to send, <strong>Shift + Enter</strong> for newline</span>
+                    <span class="powered-tag">Powered by LangGraph & Groq</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
