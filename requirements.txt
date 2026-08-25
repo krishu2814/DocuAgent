@@ -8,6 +8,7 @@ python-multipart>=0.0.17
 # Database & Vectors
 sqlalchemy[asyncio]>=2.0.36
 asyncpg>=0.30.0
+psycopg2-binary>=2.9.10
 pgvector>=0.3.6
 
 # Free Tier AI: Groq (LLM) & Lightweight FastEmbed (384-dim ONNX Embeddings, <30MB RAM)
