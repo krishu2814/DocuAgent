@@ -28,8 +28,12 @@ Question: "{question}"
 
 Respond with ONLY one word: SIMPLE or COMPLEX."""
 
+        model_to_use = settings.GROQ_MODEL
+        if "8192" in model_to_use:
+            model_to_use = "llama-3.1-8b-instant"
+
         response = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
+            model=model_to_use,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
         )
@@ -75,8 +79,12 @@ async def query_planner_node(state: AgentState) -> dict:
 User question: "{question}"
 
 Format: Return exactly 2 lines, each line containing one search query."""
+            model_to_use = settings.GROQ_MODEL
+            if "8192" in model_to_use:
+                model_to_use = "llama-3.1-8b-instant"
+
             response = client.chat.completions.create(
-                model=settings.GROQ_MODEL,
+                model=model_to_use,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
             )
