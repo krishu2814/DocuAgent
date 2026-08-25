@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # App
     PROJECT_NAME: str = "DocuAgent"
     ENVIRONMENT: str = "development"
+    FRONTEND_URL: str = ""
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/docuagent"
@@ -27,12 +28,25 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384
     HUGGINGFACE_API_KEY: str = ""
 
-    # Uploads
+    # Uploads (Temporary processing path)
     UPLOAD_DIR: Path = Path("./uploads")
 
     @property
     def is_dev(self) -> bool:
         return self.ENVIRONMENT.lower() == "development"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        if not self.FRONTEND_URL:
+            return ["*"]
+        origins = [
+            self.FRONTEND_URL.strip().rstrip("/"),
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
+        return list(dict.fromkeys(origins))
 
 
 settings = Settings()

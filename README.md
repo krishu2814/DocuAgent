@@ -247,7 +247,36 @@ tests/test_rag.py::test_chat_empty_question_returns_400 PASSED           [100%]
 
 ---
 
-## 7. Key Interview Talking Points
+## 7. Production Deployment Guide
+
+DocuAgent is designed for zero-friction cloud deployment:
+
+### 1. Managed PostgreSQL with pgvector
+Create a free serverless PostgreSQL instance on **[Neon](https://neon.tech)**, **[Supabase](https://supabase.com)**, or **[Render](https://render.com)**:
+- Ensure the `pgvector` extension is available (enabled automatically by DocuAgent on startup via `CREATE EXTENSION IF NOT EXISTS vector`).
+- Copy your connection string: `postgresql+asyncpg://<user>:<password>@<host>:<port>/<dbname>`.
+
+### 2. Deploy Backend API to Render
+1. In the [Render Dashboard](https://dashboard.render.com), click **New +** -> **Web Service**.
+2. Connect your `DocuAgent` GitHub repository.
+3. Configure the service:
+   - **Environment**: `Docker` (Render automatically detects `Dockerfile`)
+   - **Plan**: Free
+   - **Health Check Path**: `/health`
+4. Add Environment Variables:
+   - `DATABASE_URL`: `postgresql+asyncpg://<user>:<password>@<host>:<port>/<dbname>`
+   - `GROQ_API_KEY`: `gsk_...` (Your Groq API key)
+   - `ENVIRONMENT`: `production`
+   - `FRONTEND_URL`: `https://your-frontend.vercel.app` (or leave empty if hosted together)
+
+### 3. Deploy Frontend UI to Vercel
+1. Import your GitHub repository into [Vercel](https://vercel.com).
+2. Configure project root or static output (detected via `vercel.json`).
+3. Deploy!
+
+---
+
+## 8. Key Interview Talking Points
 
 1. **Why LangGraph over simple LangChain chains?**
    - Traditional chains execute strictly linearly (`A -> B -> C`). LangGraph allows building state machines with conditional loops, query analysis, branching (simple vs. complex), and evidence verification.
@@ -259,3 +288,6 @@ tests/test_rag.py::test_chat_empty_question_returns_400 PASSED           [100%]
    - The LLM does not invent citation metadata. Every chunk stored in pgvector retains its original document filename and page number from `pypdf`. The citations section is constructed directly by the backend from the chunks actually retrieved.
 
 ---
+
+## 9. License
+MIT License. Free to use and extend for personal and portfolio projects.

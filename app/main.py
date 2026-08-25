@@ -38,7 +38,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,7 +64,7 @@ async def health_check() -> HealthResponse:
 app.include_router(documents_router)
 app.include_router(chat_router)
 
-# Mount Static Frontend
+# Mount Static Frontend if present
 frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")

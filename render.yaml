@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: docuagent-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PROJECT_NAME
+        value: DocuAgent
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: EMBEDDING_DIMENSION
+        value: "384"

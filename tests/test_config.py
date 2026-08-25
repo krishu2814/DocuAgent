@@ -15,8 +15,14 @@ def test_settings_defaults() -> None:
     assert settings.is_dev is True
     assert settings.LLM_PROVIDER == "groq"
     assert settings.EMBEDDING_DIMENSION == 384
+    assert settings.cors_origins == ["*"]
 
 
-def test_settings_production_mode() -> None:
-    settings = Settings(ENVIRONMENT="production")
+def test_settings_production_cors() -> None:
+    settings = Settings(
+        ENVIRONMENT="production",
+        FRONTEND_URL="https://docuagent.vercel.app/",
+    )
     assert settings.is_dev is False
+    assert "https://docuagent.vercel.app" in settings.cors_origins
+    assert "http://localhost:8000" in settings.cors_origins

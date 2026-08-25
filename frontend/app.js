@@ -1,8 +1,14 @@
 /**
  * DocuAgent — Frontend Client Logic
+ * 
+ * Supports both unified deployment (relative URLs) and decoupled deployment 
+ * (Vercel frontend + Render backend via window.DOCUAGENT_API_URL).
  */
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Determine API Base URL
+    const API_BASE = (window.DOCUAGENT_API_URL || "").replace(/\/+$/, "");
+
     // State
     let conversationId = null;
     let isSubmitting = false;
@@ -26,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     async function checkHealth() {
         try {
-            const res = await fetch("/health");
+            const res = await fetch(`${API_BASE}/health`);
             if (res.ok) {
                 systemStatus.innerHTML = `<span class="status-dot"></span><span class="status-text">Connected</span>`;
             } else {
@@ -76,7 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showUploadStatus(`Ingesting "${file.name}" into pgvector...`, "loading");
 
         try {
-            const res = await fetch("/documents/upload", {
+            const res = await fetch(`${API_BASE}/documents/upload`, {
                 method: "POST",
                 body: formData,
             });
@@ -121,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     async function loadDocuments() {
         try {
-            const res = await fetch("/documents");
+            const res = await fetch(`${API_BASE}/documents`);
             if (!res.ok) return;
 
             const docs = await res.json();
@@ -173,7 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
 
         try {
-            const res = await fetch(`/documents/${id}`, { method: "DELETE" });
+            const res = await fetch(`${API_BASE}/documents/${id}`, { method: "DELETE" });
             if (res.ok) {
                 loadDocuments();
             }
@@ -264,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
         scrollToBottom();
 
         try {
-            const res = await fetch("/chat", {
+            const res = await fetch(`${API_BASE}/chat`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

@@ -1,4 +1,4 @@
-# Python
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,19 +8,31 @@ env/
 venv/
 .venv/
 ENV/
+build/
+dist/
+*.egg-info/
 
-# Environment
+# Environment Variables & Secrets
 .env
+.env.*
+!.env.example
 .env.local
+.env.production
 
-# Testing
+# Testing & Coverage
 .pytest_cache/
 .coverage
+htmlcov/
 
-# IDEs
+# IDEs & OS Files
 .idea/
 .vscode/
 *.swp
+.DS_Store
 
-# Storage
+# Ephemeral File Storage
 uploads/
+*.pdf
+*.txt
+*.md
+!README.md
