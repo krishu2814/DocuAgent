@@ -1,22 +1,32 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.config import settings
+from app.database import init_db
+from app.routes.documents import router as documents_router
+
+logger = logging.getLogger("docuagent.app")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        await init_db()
+        logger.info("Database initialized with pgvector extension.")
+    except Exception as exc:
+        logger.warning(f"Database auto-initialization skipped or deferred: {exc}")
     yield
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Agentic RAG Document Assistant",
+    description="Agentic RAG Document Assistant with LangGraph, PostgreSQL & pgvector",
     version="1.0.0",
     docs_url="/docs" if settings.is_dev else None,
     redoc_url=None,
@@ -45,3 +55,7 @@ async def health_check() -> HealthResponse:
         project=settings.PROJECT_NAME,
         environment=settings.ENVIRONMENT,
     )
+
+
+# Mount Routers
+app.include_router(documents_router)
