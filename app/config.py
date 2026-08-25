@@ -17,12 +17,12 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/docuagent"
 
-    # LLM (Groq)
+    # LLM (Groq - fast, universal free tier model)
     LLM_PROVIDER: str = "groq"
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
 
-    # Embeddings (Hugging Face / Sentence-Transformers)
+    # Embeddings (Hugging Face / FastEmbed)
     EMBEDDING_PROVIDER: str = "huggingface"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     EMBEDDING_DIMENSION: int = 384

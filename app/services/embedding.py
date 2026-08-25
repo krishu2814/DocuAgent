@@ -1,13 +1,17 @@
+import os
 from functools import lru_cache
 from fastembed import TextEmbedding
 
 # Model produces 384-dimensional embeddings (100% compatible with pgvector Vector(384))
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+CACHE_DIR = os.environ.get("FASTEMBED_CACHE_PATH", None)
 
 
 @lru_cache(maxsize=1)
 def get_embedding_model() -> TextEmbedding:
-    """Lazy-loads the lightweight ONNX embedding model (<30MB RAM footprint)."""
+    """Loads the lightweight ONNX embedding model from local cache (<30MB RAM footprint)."""
+    if CACHE_DIR:
+        return TextEmbedding(model_name=MODEL_NAME, cache_dir=CACHE_DIR)
     return TextEmbedding(model_name=MODEL_NAME)
 
 
