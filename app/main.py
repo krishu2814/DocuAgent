@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.database import init_db
+from app.routes.chat import router as chat_router
 from app.routes.documents import router as documents_router
 
 logger = logging.getLogger("docuagent.app")
@@ -59,3 +60,4 @@ async def health_check() -> HealthResponse:
 
 # Mount Routers
 app.include_router(documents_router)
+app.include_router(chat_router)

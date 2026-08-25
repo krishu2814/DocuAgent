@@ -1,13 +1,11 @@
-from app.schemas.document import (
-    ChunkResponse,
-    DocumentDetailResponse,
-    DocumentResponse,
-    DocumentUploadResponse,
-)
+from app.schemas.chat import ChatRequest, ChatResponse, SourceChunk
+from app.schemas.document import ChunkOut, DocumentDetailOut, DocumentOut
 
 __all__ = [
-    "ChunkResponse",
-    "DocumentDetailResponse",
-    "DocumentResponse",
-    "DocumentUploadResponse",
+    "ChatRequest",
+    "ChatResponse",
+    "ChunkOut",
+    "DocumentDetailOut",
+    "DocumentOut",
+    "SourceChunk",
 ]
