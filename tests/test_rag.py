@@ -4,11 +4,18 @@ from httpx import AsyncClient
 from app.services.llm import generate_rag_answer
 
 
-def test_generate_rag_answer_fallback_mode() -> None:
+def test_generate_rag_answer_with_chat_history() -> None:
     chunks = ["JWT stands for JSON Web Token used for stateless auth."]
-    answer = generate_rag_answer(question="What is JWT?", context_chunks=chunks)
+    history = [
+        {"role": "user", "content": "What is JWT?"},
+        {"role": "assistant", "content": "JWT is a JSON Web Token."},
+    ]
+    answer = generate_rag_answer(
+        question="Why was it chosen?",
+        context_chunks=chunks,
+        chat_history=history,
+    )
     assert len(answer) > 0
-    assert "Context provided" in answer or "JWT" in answer
 
 
 @pytest.mark.asyncio

@@ -18,6 +18,7 @@ async def test_analyze_query_node_simple() -> None:
         "sub_queries": [],
         "retrieved_chunks": [],
         "evidence_sufficient": True,
+        "chat_history": [],
         "answer": "",
         "db": None,
     }
@@ -33,6 +34,7 @@ async def test_analyze_query_node_complex() -> None:
         "sub_queries": [],
         "retrieved_chunks": [],
         "evidence_sufficient": True,
+        "chat_history": [],
         "answer": "",
         "db": None,
     }
@@ -48,6 +50,7 @@ async def test_evidence_checker_node() -> None:
         "sub_queries": [],
         "retrieved_chunks": [],
         "evidence_sufficient": False,
+        "chat_history": [],
         "answer": "",
         "db": None,
     }
@@ -60,6 +63,7 @@ async def test_evidence_checker_node() -> None:
         "sub_queries": [],
         "retrieved_chunks": [{"content": "JWT is a JSON Web Token used for authentication." * 2}],
         "evidence_sufficient": False,
+        "chat_history": [],
         "answer": "",
         "db": None,
     }
@@ -67,9 +71,32 @@ async def test_evidence_checker_node() -> None:
     assert valid_result["evidence_sufficient"] is True
 
 
+@pytest.mark.asyncio
+async def test_synthesizer_appends_citations() -> None:
+    state: AgentState = {
+        "question": "How does auth work?",
+        "query_type": "SIMPLE",
+        "sub_queries": [],
+        "retrieved_chunks": [
+            {
+                "content": "Tokens are signed with a private key.",
+                "source": "auth_spec.pdf",
+                "page_number": 4,
+            }
+        ],
+        "evidence_sufficient": True,
+        "chat_history": [],
+        "answer": "",
+        "db": None,
+    }
+    result = await synthesizer_node(state)
+    assert "Sources:" in result["answer"]
+    assert "auth_spec.pdf — Page 4" in result["answer"]
+
+
 def test_route_by_query_type() -> None:
-    simple_state: AgentState = {"query_type": "SIMPLE", "question": "", "sub_queries": [], "retrieved_chunks": [], "evidence_sufficient": True, "answer": "", "db": None}
-    complex_state: AgentState = {"query_type": "COMPLEX", "question": "", "sub_queries": [], "retrieved_chunks": [], "evidence_sufficient": True, "answer": "", "db": None}
+    simple_state: AgentState = {"query_type": "SIMPLE", "question": "", "sub_queries": [], "retrieved_chunks": [], "evidence_sufficient": True, "chat_history": [], "answer": "", "db": None}
+    complex_state: AgentState = {"query_type": "COMPLEX", "question": "", "sub_queries": [], "retrieved_chunks": [], "evidence_sufficient": True, "chat_history": [], "answer": "", "db": None}
 
     assert route_by_query_type(simple_state) == "retriever"
     assert route_by_query_type(complex_state) == "query_planner"

@@ -43,7 +43,11 @@ async def retriever_node(state: AgentState) -> dict:
 
     chunks = await search_similar_chunks(query=question, db=db, top_k=4)
     chunks_data = [
-        {"content": c.content, "page_number": c.page_number}
+        {
+            "content": c.content,
+            "page_number": c.page_number,
+            "source": c.document.filename if c.document else "Document",
+        }
         for c in chunks
     ]
     return {"retrieved_chunks": chunks_data}
@@ -57,7 +61,6 @@ async def query_planner_node(state: AgentState) -> dict:
 
     # 1. Generate sub-queries
     if not settings.GROQ_API_KEY or settings.GROQ_API_KEY.startswith("gsk_your_") or settings.GROQ_API_KEY.startswith("gsk_dev_"):
-        # Fallback simple decomposition
         sub_queries = [question, f"Details and comparison regarding {question}"]
     else:
         try:
@@ -94,6 +97,7 @@ Sub-queries:"""
                 combined_chunks.append({
                     "content": c.content,
                     "page_number": c.page_number,
+                    "source": c.document.filename if c.document else "Document",
                 })
 
     return {
@@ -108,19 +112,42 @@ async def evidence_checker_node(state: AgentState) -> dict:
     if not retrieved_chunks:
         return {"evidence_sufficient": False}
 
-    # If chunks exist and have non-trivial content, consider evidence sufficient
     sufficient = len(retrieved_chunks) > 0 and sum(len(c["content"]) for c in retrieved_chunks) > 50
     return {"evidence_sufficient": sufficient}
 
 
 async def synthesizer_node(state: AgentState) -> dict:
-    """Synthesizes the final answer using retrieved context and Groq LLM."""
+    """Synthesizes final answer with multi-turn memory and appends genuine citations."""
     question = state["question"]
     retrieved_chunks = state.get("retrieved_chunks", [])
+    chat_history = state.get("chat_history", [])
 
     if not retrieved_chunks:
-        return {"answer": "No relevant document chunks found to answer this question."}
+        return {"answer": "No relevant document chunks found in the database to answer this question."}
 
+    # 1. Generate core answer from LLM with conversation history
     chunk_texts = [c["content"] for c in retrieved_chunks]
-    answer = generate_rag_answer(question=question, context_chunks=chunk_texts)
-    return {"answer": answer}
+    base_answer = generate_rag_answer(
+        question=question,
+        context_chunks=chunk_texts,
+        chat_history=chat_history,
+    )
+
+    # 2. Build unique, verifiable citations from actual chunks
+    unique_sources = []
+    seen_citations = set()
+
+    for c in retrieved_chunks:
+        source_name = c.get("source", "Document")
+        page = c.get("page_number")
+        citation_str = f"{source_name} — Page {page}" if page else source_name
+
+        if citation_str not in seen_citations:
+            seen_citations.add(citation_str)
+            unique_sources.append(citation_str)
+
+    # 3. Append citations section
+    citations_text = "\n\nSources:\n" + "\n".join(f"[{i+1}] {s}" for i, s in enumerate(unique_sources))
+    full_answer = f"{base_answer}{citations_text}"
+
+    return {"answer": full_answer}

@@ -59,14 +59,19 @@ def build_rag_graph():
 rag_graph = build_rag_graph()
 
 
-async def run_agent_workflow(question: str, db: AsyncSession) -> dict:
-    """Executes the LangGraph state machine on a user question."""
+async def run_agent_workflow(
+    question: str,
+    db: AsyncSession,
+    chat_history: list[dict] | None = None,
+) -> dict:
+    """Executes the LangGraph state machine on a user question with conversation history."""
     initial_state: AgentState = {
         "question": question,
         "query_type": "SIMPLE",
         "sub_queries": [],
         "retrieved_chunks": [],
         "evidence_sufficient": True,
+        "chat_history": chat_history or [],
         "answer": "",
         "db": db,
     }
