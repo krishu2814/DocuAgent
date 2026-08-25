@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: docuagent_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: docuagent
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d docuagent"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docuagent_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - PROJECT_NAME=DocuAgent
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/docuagent
+      - LLM_PROVIDER=groq
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=llama-3.3-70b-versatile
+      - EMBEDDING_PROVIDER=huggingface
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - EMBEDDING_DIMENSION=384
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - .:/app
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+  uploads_data:
