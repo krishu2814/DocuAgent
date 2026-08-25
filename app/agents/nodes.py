@@ -7,12 +7,16 @@ from app.services.retrieval import search_similar_chunks
 async def analyze_query_node(state: AgentState) -> dict:
     """Classifies user question as SIMPLE (direct lookup) or COMPLEX (multi-part / comparison)."""
     question = state["question"]
+    lower_q = question.lower()
+    fallback_type = (
+        "COMPLEX"
+        if any(w in lower_q for w in ["compare", "difference", "vs", "versus", "steps", "summarise", "summarize"])
+        else "SIMPLE"
+    )
 
-    # Fallback heuristic if API key is not active
+    # Fallback heuristic if API key is not a real production key
     if not settings.GROQ_API_KEY or settings.GROQ_API_KEY.startswith("gsk_your_") or settings.GROQ_API_KEY.startswith("gsk_dev_"):
-        lower_q = question.lower()
-        query_type = "COMPLEX" if any(w in lower_q for w in ["compare", "difference", "vs", "versus", "steps"]) else "SIMPLE"
-        return {"query_type": query_type}
+        return {"query_type": fallback_type}
 
     try:
         client = get_groq_client()
@@ -29,11 +33,11 @@ Respond with ONLY one word: SIMPLE or COMPLEX."""
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
         )
-        classification = (response.choices[0].message.content or "SIMPLE").strip().upper()
+        classification = (response.choices[0].message.content or "").strip().upper()
         query_type = "COMPLEX" if "COMPLEX" in classification else "SIMPLE"
         return {"query_type": query_type}
     except Exception:
-        return {"query_type": "SIMPLE"}
+        return {"query_type": fallback_type}
 
 
 async def retriever_node(state: AgentState) -> dict:
@@ -54,100 +58,108 @@ async def retriever_node(state: AgentState) -> dict:
 
 
 async def query_planner_node(state: AgentState) -> dict:
-    """Decomposes COMPLEX queries into 2 sub-queries and retrieves chunks for each."""
+    """Decomposes a COMPLEX question into 2 focused sub-queries and retrieves chunks for both."""
     question = state["question"]
     db = state["db"]
-    sub_queries: list[str] = []
 
-    # 1. Generate sub-queries
-    if not settings.GROQ_API_KEY or settings.GROQ_API_KEY.startswith("gsk_your_") or settings.GROQ_API_KEY.startswith("gsk_dev_"):
-        sub_queries = [question, f"Details and comparison regarding {question}"]
-    else:
+    # Generate 2 sub-queries using Groq or fallback rule
+    sub_queries = [
+        f"Key concepts and definitions in: {question}",
+        f"Tradeoffs and details in: {question}",
+    ]
+
+    if settings.GROQ_API_KEY and not settings.GROQ_API_KEY.startswith("gsk_your_") and not settings.GROQ_API_KEY.startswith("gsk_dev_"):
         try:
             client = get_groq_client()
-            prompt = f"""Break down this complex question into 2 distinct, focused search sub-queries.
-Return ONLY the 2 sub-queries, one per line.
+            prompt = f"""Break the following complex user question into exactly 2 distinct search queries.
+User question: "{question}"
 
-Complex question: "{question}"
-
-Sub-queries:"""
-
+Format: Return exactly 2 lines, each line containing one search query."""
             response = client.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
+                temperature=0.2,
             )
-            raw_lines = (response.choices[0].message.content or "").strip().split("\n")
-            sub_queries = [line.strip().lstrip("123456789.-* ") for line in raw_lines if line.strip()][:2]
+            lines = [
+                line.strip().lstrip("1234567890.- ")
+                for line in (response.choices[0].message.content or "").split("\n")
+                if line.strip()
+            ]
+            if len(lines) >= 2:
+                sub_queries = lines[:2]
         except Exception:
-            sub_queries = [question]
+            pass
 
-    if not sub_queries:
-        sub_queries = [question]
+    # Retrieve chunks for each sub-query
+    all_chunks_data = []
+    seen_contents = set()
 
-    # 2. Search chunks for each sub-query and combine distinct results
-    seen_contents: set[str] = set()
-    combined_chunks: list[dict] = []
-
-    for sq in sub_queries:
-        chunks = await search_similar_chunks(query=sq, db=db, top_k=2)
-        for c in chunks:
+    for sub_q in sub_queries:
+        sub_chunks = await search_similar_chunks(query=sub_q, db=db, top_k=3)
+        for c in sub_chunks:
             if c.content not in seen_contents:
                 seen_contents.add(c.content)
-                combined_chunks.append({
-                    "content": c.content,
-                    "page_number": c.page_number,
-                    "source": c.document.filename if c.document else "Document",
-                })
+                all_chunks_data.append(
+                    {
+                        "content": c.content,
+                        "page_number": c.page_number,
+                        "source": c.document.filename if c.document else "Document",
+                    }
+                )
 
     return {
         "sub_queries": sub_queries,
-        "retrieved_chunks": combined_chunks,
+        "retrieved_chunks": all_chunks_data,
     }
 
 
 async def evidence_checker_node(state: AgentState) -> dict:
-    """Checks if the retrieved chunks provide sufficient evidence to answer the question."""
+    """Evaluates whether retrieved chunks contain sufficient evidence."""
     retrieved_chunks = state.get("retrieved_chunks", [])
     if not retrieved_chunks:
         return {"evidence_sufficient": False}
 
-    sufficient = len(retrieved_chunks) > 0 and sum(len(c["content"]) for c in retrieved_chunks) > 50
-    return {"evidence_sufficient": sufficient}
+    total_chars = sum(len(c["content"]) for c in retrieved_chunks)
+    is_sufficient = total_chars >= 50
+    return {"evidence_sufficient": is_sufficient}
 
 
 async def synthesizer_node(state: AgentState) -> dict:
-    """Synthesizes final answer with multi-turn memory and appends genuine citations."""
+    """Synthesizes the final grounded answer with citations and multi-turn chat history."""
     question = state["question"]
     retrieved_chunks = state.get("retrieved_chunks", [])
+    evidence_sufficient = state.get("evidence_sufficient", True)
     chat_history = state.get("chat_history", [])
 
-    if not retrieved_chunks:
-        return {"answer": "No relevant document chunks found in the database to answer this question."}
+    if not evidence_sufficient or not retrieved_chunks:
+        return {
+            "answer": "I could not find enough relevant information in the uploaded documents to answer your question."
+        }
 
-    # 1. Generate core answer from LLM with conversation history
-    chunk_texts = [c["content"] for c in retrieved_chunks]
+    raw_text_chunks = [c["content"] for c in retrieved_chunks]
     base_answer = generate_rag_answer(
         question=question,
-        context_chunks=chunk_texts,
+        context_chunks=raw_text_chunks,
         chat_history=chat_history,
     )
 
-    # 2. Build unique, verifiable citations from actual chunks
-    unique_sources = []
+    # Format grounded citations from retrieved chunks
+    citation_lines = []
     seen_citations = set()
 
-    for c in retrieved_chunks:
-        source_name = c.get("source", "Document")
-        page = c.get("page_number")
-        citation_str = f"{source_name} — Page {page}" if page else source_name
+    for chunk in retrieved_chunks:
+        source_name = chunk.get("source") or "Document"
+        page_num = chunk.get("page_number")
+        citation_label = f"{source_name} — Page {page_num}" if page_num else source_name
 
-        if citation_str not in seen_citations:
-            seen_citations.add(citation_str)
-            unique_sources.append(citation_str)
+        if citation_label not in seen_citations:
+            seen_citations.add(citation_label)
+            citation_lines.append(f"[{len(seen_citations)}] {citation_label}")
 
-    # 3. Append citations section
-    citations_text = "\n\nSources:\n" + "\n".join(f"[{i+1}] {s}" for i, s in enumerate(unique_sources))
-    full_answer = f"{base_answer}{citations_text}"
+    if citation_lines:
+        citations_section = "\n\nSources:\n" + "\n".join(citation_lines)
+        final_answer = f"{base_answer}{citations_section}"
+    else:
+        final_answer = base_answer
 
-    return {"answer": full_answer}
+    return {"answer": final_answer}

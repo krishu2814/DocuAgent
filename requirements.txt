@@ -10,9 +10,9 @@ sqlalchemy[asyncio]>=2.0.36
 asyncpg>=0.30.0
 pgvector>=0.3.6
 
-# Free Tier AI: Groq (LLM) & HuggingFace (Embeddings)
+# Free Tier AI: Groq (LLM) & Lightweight FastEmbed (384-dim ONNX Embeddings, <30MB RAM)
 groq>=0.18.0
-sentence-transformers>=3.4.0
+fastembed>=0.8.0
 langgraph>=0.2.50
 langchain-core>=0.3.20
 
